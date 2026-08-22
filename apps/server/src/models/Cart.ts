@@ -39,7 +39,9 @@ const cartItemSchema = new Schema(
 
 const cartSchema = new Schema(
   {
-    user: { type: Schema.Types.ObjectId, ref: 'User', default: null, index: true },
+    // Indexed below: a unique partial index, not a plain one. Declaring
+    // `index: true` here as well would build a second, redundant index.
+    user: { type: Schema.Types.ObjectId, ref: 'User', default: null },
     /** Opaque token for anonymous shoppers, stored in an httpOnly cookie. */
     guestToken: { type: String, default: null, index: true, sparse: true },
 
@@ -48,7 +50,8 @@ const cartSchema = new Schema(
     couponCode: { type: String, default: null, uppercase: true, trim: true },
 
     /** Rolls forward on every mutation; drives the TTL below. */
-    lastActivityAt: { type: Date, default: Date.now, index: true },
+    // Indexed below with a TTL; see the note on `user`.
+    lastActivityAt: { type: Date, default: Date.now },
     /** Set when the cart converts, so it is retained for order forensics. */
     convertedOrder: { type: Schema.Types.ObjectId, ref: 'Order', default: null },
     abandonedEmailSentAt: { type: Date, default: null },

@@ -166,6 +166,31 @@ export type RotateResult =
  * roles/tokenVersion (read from the database) so a role change takes effect on
  * the next refresh rather than at the next full login.
  */
+/**
+ * Detects a replay of an already-rotated refresh token, revoking its family.
+ *
+ * Rotation deletes the spent session, so by the time a stolen token is
+ * replayed there is no session left to look it up by. Callers that bail on a
+ * missing session would therefore never reach the reuse check inside
+ * `rotateRefreshToken`, and the theft would look like an ordinary expired
+ * session: the attacker's rotated session would survive and nobody would be
+ * told. The spent-token marker outlives the session precisely so this stays
+ * detectable.
+ *
+ * Returns the owning user id on detection, or null when the token was simply
+ * never valid.
+ */
+export async function detectTokenReuse(
+  presentedToken: string,
+): Promise<{ detected: boolean; userId: string | null }> {
+  const familyId = await redis.get(usedTokenKey(hashToken(presentedToken)));
+  if (!familyId) return { detected: false, userId: null };
+
+  const userId = await revokeFamily(familyId);
+  log.warn({ familyId, userId }, 'refresh token reuse detected; family revoked');
+  return { detected: true, userId };
+}
+
 export async function rotateRefreshToken(
   sessionId: string,
   presentedToken: string,

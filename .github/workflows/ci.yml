@@ -22,7 +22,25 @@ jobs:
   build:
     name: Lint, typecheck, test
     runs-on: ubuntu-latest
-    timeout-minutes: 20
+    timeout-minutes: 25
+
+    # The integration suite runs the real app against a real database. Mongo is
+    # in-memory and started by the tests themselves, because checkout needs a
+    # replica set for transactions and a service container would need its own
+    # rs.initiate step. Redis has no such requirement, so it comes from here.
+    services:
+      redis:
+        image: redis:7-alpine
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    env:
+      REDIS_URL: redis://127.0.0.1:6379
 
     steps:
       - uses: actions/checkout@v5

@@ -77,6 +77,25 @@ function wantsBodyTokens(req: Request): boolean {
   return req.get('x-client-type') === 'mobile';
 }
 
+/**
+ * The refresh token as a client without cookies has to hold it.
+ *
+ * `/auth/refresh` reads the session id from the cookie when there is one, and
+ * otherwise splits the body token on its first `.`. A native client has no
+ * cookie, so the session id has to travel inside the token itself, and
+ * `issueSession` mints a bare random string with no `.` in it.
+ *
+ * Register and login used to hand that bare string back, which the refresh
+ * endpoint then rejected for having no separator. Every mobile session was
+ * therefore unrecoverable: the first refresh after the access token expired
+ * returned 401, and the client dutifully cleared its tokens and signed the
+ * user out. Only `/auth/refresh` returned the composite form, so nothing that
+ * started at register or login ever reached it.
+ */
+function bodyRefreshToken(sessionId: string, refreshToken: string): string {
+  return `${sessionId}.${refreshToken}`;
+}
+
 function requestMeta(req: Request) {
   return { ip: req.ip ?? null, userAgent: req.get('user-agent') ?? null };
 }
@@ -86,13 +105,18 @@ export const registerHandler = asyncHandler(async (req: Request, res: Response) 
   const { auth, refreshToken } = await authService.register(input, requestMeta(req));
 
   setPrivateNoStore(res);
+
+  // The session id is embedded in the access token; both the cookie and the
+  // body form need it spelled out, so decode it once.
+  const sessionId = decodeSessionId(auth.tokens.accessToken);
+
   if (wantsBodyTokens(req)) {
-    return created(res, { ...auth, tokens: { ...auth.tokens, refreshToken } });
+    return created(res, {
+      ...auth,
+      tokens: { ...auth.tokens, refreshToken: bodyRefreshToken(sessionId, refreshToken) },
+    });
   }
 
-  // The session id is embedded in the access token, but the cookie needs it
-  // explicitly for the refresh call, so decode it from the issued session.
-  const sessionId = decodeSessionId(auth.tokens.accessToken);
   setRefreshCookie(res, sessionId, refreshToken, false);
   return created(res, auth);
 });
@@ -102,11 +126,16 @@ export const loginHandler = asyncHandler(async (req: Request, res: Response) => 
   const { auth, refreshToken } = await authService.login(input, requestMeta(req));
 
   setPrivateNoStore(res);
+  const sessionId = decodeSessionId(auth.tokens.accessToken);
+
   if (wantsBodyTokens(req)) {
-    return ok(res, { ...auth, tokens: { ...auth.tokens, refreshToken } });
+    return ok(res, {
+      ...auth,
+      tokens: { ...auth.tokens, refreshToken: bodyRefreshToken(sessionId, refreshToken) },
+    });
   }
 
-  setRefreshCookie(res, decodeSessionId(auth.tokens.accessToken), refreshToken, input.rememberMe);
+  setRefreshCookie(res, sessionId, refreshToken, input.rememberMe);
   return ok(res, auth);
 });
 
@@ -136,7 +165,7 @@ export const refreshHandler = asyncHandler(async (req: Request, res: Response) =
       const newSessionId = decodeSessionId(auth.tokens.accessToken);
       return ok(res, {
         ...auth,
-        tokens: { ...auth.tokens, refreshToken: `${newSessionId}.${refreshToken}` },
+        tokens: { ...auth.tokens, refreshToken: bodyRefreshToken(newSessionId, refreshToken) },
       });
     }
 

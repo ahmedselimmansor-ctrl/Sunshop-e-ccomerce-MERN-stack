@@ -241,9 +241,30 @@ export async function refresh(
   meta: { ip?: string | null; userAgent?: string | null },
 ): Promise<{ auth: AuthResponse; refreshToken: string }> {
   // Read current roles/version first so a role change applies on this refresh.
-  const { getSession } = await import('../../security/tokens');
+  const { getSession, detectTokenReuse } = await import('../../security/tokens');
   const existing = await getSession(sessionId);
-  if (!existing) throw ApiError.unauthorized('errors.session_revoked');
+
+  if (!existing) {
+    /*
+     * A missing session is ambiguous: either it was revoked normally, or this
+     * is a replay of a token that rotation already spent and deleted. Only the
+     * spent-token marker separates the two, and the replay case has to take
+     * the rest of the family down with it. Returning early here instead made
+     * every replay look like an ordinary revoked session, which left the
+     * reuse check inside `rotateRefreshToken` unreachable and the attacker's
+     * freshly rotated session alive.
+     */
+    const reuse = await detectTokenReuse(refreshToken);
+    if (reuse.detected) {
+      if (reuse.userId) {
+        await User.updateOne({ _id: reuse.userId }, { $inc: { tokenVersion: 1 } });
+      }
+      businessEvents.inc({ event: 'token_reuse', outcome: 'failure' });
+      log.error({ userId: reuse.userId }, 'refresh token reuse, all sessions revoked');
+      throw new ApiError(401, ERROR_CODES.TOKEN_REUSED, 'errors.token_reuse');
+    }
+    throw ApiError.unauthorized('errors.session_revoked');
+  }
 
   const user = await User.findById(existing.userId).select(
     'email firstName lastName roles status tokenVersion emailVerified totpEnabled locale theme avatarKey createdAt deletedAt',

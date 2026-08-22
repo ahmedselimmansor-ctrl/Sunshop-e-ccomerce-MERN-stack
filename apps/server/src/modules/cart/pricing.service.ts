@@ -72,6 +72,25 @@ export async function getShippingMethods(
   const threshold = settings.freeShippingThreshold;
   const currency = subtotal.currency;
 
+  /*
+   * A destination the store does not serve gets no options at all.
+   *
+   * `shipsToCountries` was stored, seeded, editable in the admin console and
+   * published to clients, but nothing ever read it here: every unknown country
+   * fell through to `priceByZone.default` and was quoted a price. Checkout then
+   * accepted the order, because its only shipping check is that the chosen
+   * method exists for the destination. Returning nothing makes that existing
+   * check reject the address, so the quote endpoint and checkout agree without
+   * either of them growing a second copy of the rule.
+   *
+   * An empty list means unrestricted, which is the model's default and keeps a
+   * store that never configured one working exactly as before.
+   */
+  const servedCountries = settings.shipsToCountries ?? [];
+  if (servedCountries.length > 0 && !servedCountries.includes(country.toUpperCase())) {
+    return [];
+  }
+
   return SHIPPING_CATALOGUE.map((definition) => {
     const base =
       definition.priceByZone[country.toUpperCase()] ?? definition.priceByZone.default ?? 0;
