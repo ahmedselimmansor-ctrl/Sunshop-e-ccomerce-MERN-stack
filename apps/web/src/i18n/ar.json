@@ -63,7 +63,7 @@
     "viewAll": "عرض الكل",
     "freeShipping": "شحن مجاني",
     "freeShippingDesc": "للطلبات فوق الحد الأدنى",
-    "easyReturns": "إرجاع خلال ١٤ يومًا",
+    "easyReturns": "إرجاع خلال 14 يومًا",
     "easyReturnsDesc": "بدون أسئلة",
     "securePayment": "دفع آمن",
     "securePaymentDesc": "مشفّر من البداية للنهاية",
@@ -107,7 +107,9 @@
     "noReviews": "لا توجد تقييمات بعد.",
     "onlyLeft": "بقي {{count}} فقط",
     "outOfStock": "غير متوفر",
-    "ratingSummary": "{{rating}} من ٥ ({{count}} تقييم)",
+    "ratingSummary": "{{rating}} من 5 ({{count}} تقييم)",
+    "ratingSummary_other": "{{rating}} من 5 ({{count}} تقييمات)",
+    "ratingValue": "{{rating}} من 5",
     "relatedProducts": "قد يعجبك أيضًا",
     "reviews": "التقييمات",
     "sale": "خصم",
@@ -194,7 +196,7 @@
     "resetSubtitle": "سنرسل لك رابطًا لاختيار كلمة مرور جديدة.",
     "sendResetLink": "إرسال الرابط",
     "totpCode": "رمز المصادقة",
-    "totpHint": "أدخل الرمز المكوّن من ٦ أرقام من تطبيق المصادقة.",
+    "totpHint": "أدخل الرمز المكوّن من 6 أرقام من تطبيق المصادقة.",
     "signedOut": "تم تسجيل خروجك."
   },
   "account": {

@@ -1,5 +1,7 @@
 import { Star } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
 
+import { useFormat } from '@/lib/format';
 import { cn } from '@/lib/utils';
 
 interface RatingStarsProps {
@@ -9,20 +11,46 @@ interface RatingStarsProps {
   className?: string;
 }
 
+const MAX = 5;
+
 /**
  * Star rating.
  *
- * The visual stars are `aria-hidden` and the value is exposed once as text:
- * otherwise a screen reader announces "star, star, star, star, star" and the
- * actual rating never arrives. The half-star fill is a clipped overlay rather
- * than a rounded value, so 4.3 does not render as 4.5.
+ * The stars are a picture of a number, so the whole widget is one `img` with
+ * the number as its label. Rendering five `Star` elements without that leaves
+ * a screen reader announcing "star, star, star, star, star", or, where no
+ * count is passed and the numeric text is therefore hidden, announcing
+ * nothing at all.
  */
 export function RatingStars({ value, count, size = 'sm', className }: RatingStarsProps) {
-  const percentage = Math.max(0, Math.min(100, (value / 5) * 100));
+  const { t } = useTranslation();
+  const format = useFormat();
+
+  /*
+   * Clamped, and non-finite input floors to zero rather than passing through.
+   *
+   * `NaN` reaches the style attribute as `width: NaN%`, which is not a valid
+   * declaration, so the browser drops it and `inset-0` stretches the overlay
+   * to full width. A product whose rating failed to load would then display a
+   * flawless five stars, which is the worst direction for this to fail in.
+   */
+  const rating = Number.isFinite(value) ? Math.min(MAX, Math.max(0, value)) : 0;
+  const percentage = (rating / MAX) * 100;
+
+  const hasCount = Number.isFinite(count);
+  const displayRating = rating.toFixed(1);
   const starSize = size === 'sm' ? 'size-3.5' : 'size-5';
 
+  const label = hasCount
+    ? t('product.ratingSummary', { rating: displayRating, count })
+    : t('product.ratingValue', { rating: displayRating });
+
   return (
-    <span className={cn('inline-flex items-center gap-1.5', className)}>
+    <span
+      role="img"
+      aria-label={label}
+      className={cn('inline-flex items-center gap-1.5', className)}
+    >
       <span className="relative inline-flex" aria-hidden>
         {/*
          * The empty stars are outlined, not filled grey.
@@ -38,10 +66,11 @@ export function RatingStars({ value, count, size = 'sm', className }: RatingStar
          * which leaves the colour free to carry contrast against the surface.
          */}
         <span className="text-muted-foreground inline-flex">
-          {Array.from({ length: 5 }, (_, index) => (
+          {Array.from({ length: MAX }, (_, index) => (
             <Star key={index} className={cn(starSize, 'shrink-0')} fill="none" strokeWidth={1.5} />
           ))}
         </span>
+
         {/*
          * Clipped overlay: width is the exact fraction, direction-safe.
          *
@@ -56,7 +85,7 @@ export function RatingStars({ value, count, size = 'sm', className }: RatingStar
           className="text-warning absolute inset-0 inline-flex overflow-hidden rtl:flex-row-reverse"
           style={{ width: `${percentage}%` }}
         >
-          {Array.from({ length: 5 }, (_, index) => (
+          {Array.from({ length: MAX }, (_, index) => (
             <Star
               key={index}
               className={cn(starSize, 'shrink-0')}
@@ -66,9 +95,10 @@ export function RatingStars({ value, count, size = 'sm', className }: RatingStar
           ))}
         </span>
       </span>
-      {count !== undefined && (
-        <span className="numeric text-muted-foreground text-xs">
-          {value.toFixed(1)} ({count})
+
+      {hasCount && (
+        <span className="numeric text-muted-foreground text-xs" aria-hidden>
+          {displayRating} ({format.number(count as number)})
         </span>
       )}
     </span>
