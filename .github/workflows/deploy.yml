@@ -79,7 +79,7 @@ jobs:
             VITE_STRIPE_PUBLISHABLE_KEY=${{ secrets.STRIPE_PUBLISHABLE_KEY }}
 
       - name: Scan the built image
-        uses: aquasecurity/trivy-action@0.28.0
+        uses: aquasecurity/trivy-action@v0.36.0
         with:
           image-ref: ${{ env.ECR_REGISTRY }}/sunshop-${{ matrix.name }}:${{ github.sha }}
           severity: HIGH,CRITICAL
