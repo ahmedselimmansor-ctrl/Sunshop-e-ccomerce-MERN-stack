@@ -181,7 +181,6 @@ erDiagram
     USER ||--o{ WISHLIST_ITEM : saves
     USER ||--o| CART : owns
     USER ||--o{ ADDRESS : "has (embedded)"
-    USER ||--o{ REFRESH_TOKEN : "has (embedded)"
 
     CATEGORY ||--o{ CATEGORY : "parent of"
     CATEGORY }o--o{ PRODUCT : categorises
@@ -198,6 +197,9 @@ erDiagram
     ORDER ||--o{ INVENTORY_LOG : "reserves / releases"
     ORDER ||--o{ REVIEW : "verifies purchase"
     COUPON ||--o{ ORDER : discounts
+    COUPON ||--o{ COUPON_REDEMPTION : "redeemed as"
+    USER ||--o{ COUPON_REDEMPTION : redeems
+    ORDER ||--o| COUPON_REDEMPTION : records
 
     USER {
         ObjectId _id
@@ -206,10 +208,14 @@ erDiagram
         string firstName
         string lastName
         string[] roles
-        object twoFactor
+        string status
+        boolean totpEnabled
+        string totpSecret
+        int tokenVersion
         Address[] addresses
-        RefreshToken[] refreshTokens
-        boolean isSuspended
+        int ordersCount
+        Money totalSpent
+        date deletedAt
     }
 
     PRODUCT {
@@ -225,7 +231,14 @@ erDiagram
         Variant[] variants
         string status
         boolean isFeatured
-        object rating
+        int priceMin
+        int priceMax
+        int totalStock
+        float ratingAverage
+        int ratingCount
+        int[] ratingBreakdown
+        int soldCount
+        date deletedAt
     }
 
     VARIANT {
@@ -281,14 +294,15 @@ erDiagram
         OrderItem[] items
         Address shippingAddress
         Address billingAddress
-        Money subtotal
-        Money discount
-        Money shipping
-        Money tax
-        Money total
+        Totals totals
         string couponCode
         Shipment[] shipments
+        TimelineEntry[] timeline
+        Money refundedAmount
+        date reservationExpiresAt
+        boolean inventoryReleased
         date placedAt
+        date paidAt
     }
 
     ORDER_ITEM {
@@ -331,18 +345,20 @@ erDiagram
         ObjectId _id
         ObjectId user FK
         ObjectId product FK
-        date createdAt
+        date addedAt
     }
 
     INVENTORY_LOG {
         ObjectId _id
         ObjectId product FK
         ObjectId variantId
+        string sku
         ObjectId order FK
-        ObjectId actor FK
+        ObjectId by FK
         string reason
         int delta
-        int resulting
+        int stockAfter
+        date at
     }
 
     OUTBOX_EVENT {
@@ -357,13 +373,56 @@ erDiagram
 
     AUDIT_LOG {
         ObjectId _id
-        ObjectId actor FK
         string action
-        string entityType
-        ObjectId entityId
-        Mixed before
-        Mixed after
-        string ip
+        Actor actor
+        Target target
+        Mixed changes
+        string reason
+        string requestId
+        string outcome
+        date at
+    }
+
+    COUPON_REDEMPTION {
+        ObjectId _id
+        ObjectId coupon FK
+        string code
+        ObjectId user FK
+        string email
+        ObjectId order FK
+        Money discount
+        date redeemedAt
+    }
+
+    IDEMPOTENCY_KEY {
+        ObjectId _id
+        string key UK
+        string userScope
+        string endpoint
+        string requestHash
+        string status
+        int statusCode
+        Mixed response
+        date completedAt
+    }
+
+    COUNTER {
+        string _id
+        int seq
+    }
+
+    SETTINGS {
+        string _id
+        string storeName
+        string supportEmail
+        string defaultCurrency
+        string defaultLocale
+        string[] shipsToCountries
+        float taxRatePercent
+        boolean taxIncludedInPrices
+        Money freeShippingThreshold
+        boolean maintenanceMode
+        ObjectId updatedBy FK
     }
 ```
 
@@ -379,7 +438,18 @@ erDiagram
 
 **`OUTBOX_EVENT` exists so side effects are transactional.** Explained under [Checkout and the outbox](#checkout-and-the-outbox).
 
-**`AUDIT_LOG` keeps before/after snapshots** so a staff action can be reconstructed, not merely listed.
+**`AUDIT_LOG` records actor, target and a `changes` diff** so a staff action can be
+reconstructed rather than merely listed: who, from which IP, on which order, and
+from what value to what.
+
+**Three collections are operational rather than domain.** `IDEMPOTENCY_KEY` stores
+the response to a completed request so a retried checkout replays instead of
+charging twice, `COUNTER` issues sequential order numbers, and `SETTINGS` is a
+singleton the storefront reads for tax, shipping and maintenance mode.
+
+**Refresh sessions are not in MongoDB.** They live in Redis, keyed by session id
+and grouped into families so that replaying a spent token can revoke every
+descendant at once.
 
 ---
 
@@ -517,21 +587,22 @@ sequenceDiagram
     participant APP as SPA
     participant API
     participant DB as MongoDB
+    participant R as Redis
 
     U->>APP: email + password
     APP->>API: POST /auth/login
     API->>DB: verify argon2 hash
-    API->>DB: store refresh token (hashed)
+    API->>R: store session (token hash, family id)
     API-->>APP: access token (memory)<br/>refresh token (httpOnly, SameSite)
 
     Note over APP: access token expires
 
     APP->>API: POST /auth/refresh (cookie)
-    API->>DB: look up + invalidate old token
-    API->>DB: store replacement
+    API->>R: look up session, mark token used
+    API->>R: store replacement in the same family
     API-->>APP: new access + new refresh
 
-    Note over API,DB: rotation. A stolen refresh token<br/>is single-use, and reuse of an<br/>already-spent token revokes the family
+    Note over API,R: rotation. A stolen refresh token<br/>is single-use. Replaying a spent one<br/>revokes the whole family, and<br/>User.tokenVersion revokes everything
 ```
 
 Roles map to permissions in `packages/shared`, and routes declare the permission they need rather than the role, so adding a role does not mean auditing every route.
