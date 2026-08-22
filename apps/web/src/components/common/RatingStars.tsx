@@ -72,7 +72,7 @@ export function RatingStars({ value, count, size = 'sm', className }: RatingStar
         </span>
 
         {/*
-         * Clipped overlay: width is the exact fraction, direction-safe.
+         * Clipped overlay: width is the exact fraction.
          *
          * `shrink-0` is what makes this a clip rather than a squeeze. These
          * stars are flex children of a box narrowed to the rating fraction,
@@ -80,9 +80,17 @@ export function RatingStars({ value, count, size = 'sm', className }: RatingStar
          * stars were compressed horizontally into that box: a 3.7 rendered as
          * five squashed stars rather than three and a bit. It looked plausible
          * only because the layer underneath was too faint to compare against.
+         *
+         * No direction override. `dir="rtl"` already lays a flex row out
+         * right-to-left, so an `rtl:flex-row-reverse` here reversed it a second
+         * time and the overlay ran left-to-right while the outlines underneath
+         * ran right-to-left. The two rows then sat half a star apart, which is
+         * what made an Arabic rating look doubled. Both layers use the same
+         * direction, and `inset-0` plus a width anchors the clip to the correct
+         * edge in either one.
          */}
         <span
-          className="text-warning absolute inset-0 inline-flex overflow-hidden rtl:flex-row-reverse"
+          className="text-warning absolute inset-0 inline-flex overflow-hidden"
           style={{ width: `${percentage}%` }}
         >
           {Array.from({ length: MAX }, (_, index) => (
