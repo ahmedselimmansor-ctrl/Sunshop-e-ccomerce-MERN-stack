@@ -14,7 +14,10 @@ module.exports = {
   ],
   settings: {
     'import/resolver': {
-      typescript: { alwaysTryTypes: true, project: ['apps/*/tsconfig.json', 'packages/*/tsconfig.json'] },
+      typescript: {
+        alwaysTryTypes: true,
+        project: ['apps/*/tsconfig.json', 'packages/*/tsconfig.json'],
+      },
     },
     react: { version: 'detect' },
   },
@@ -24,7 +27,10 @@ module.exports = {
       { argsIgnorePattern: '^_', varsIgnorePattern: '^_', caughtErrorsIgnorePattern: '^_' },
     ],
     '@typescript-eslint/no-explicit-any': 'warn',
-    '@typescript-eslint/consistent-type-imports': ['warn', { prefer: 'type-imports', fixStyle: 'inline-type-imports' }],
+    '@typescript-eslint/consistent-type-imports': [
+      'warn',
+      { prefer: 'type-imports', fixStyle: 'inline-type-imports' },
+    ],
     'no-console': ['warn', { allow: ['warn', 'error'] }],
     'import/order': [
       'warn',
@@ -61,7 +67,11 @@ module.exports = {
     {
       files: ['apps/web/**/*.tsx', 'apps/admin/**/*.tsx'],
       plugins: ['react', 'react-hooks'],
-      extends: ['plugin:react/recommended', 'plugin:react/jsx-runtime', 'plugin:react-hooks/recommended'],
+      extends: [
+        'plugin:react/recommended',
+        'plugin:react/jsx-runtime',
+        'plugin:react-hooks/recommended',
+      ],
       rules: {
         // TypeScript props are the contract; runtime prop-types would be a
         // second, weaker copy of it that drifts.
@@ -69,6 +79,13 @@ module.exports = {
         // forwardRef components get their name from the assignment, which the
         // rule cannot see.
         'react/display-name': 'off',
+        // The rule wants camelCase `fetchPriority`, which is correct for React
+        // 19 and wrong for the React 18 this app runs: react-dom 18 does not
+        // know the prop, warns on every image, and renders the attribute
+        // lowercased anyway. Writing it lowercase produces the same HTML in
+        // silence. Drop this entry when the app moves to React 19; see
+        // apps/web/src/react-dom-attributes.d.ts.
+        'react/no-unknown-property': ['error', { ignore: ['fetchpriority'] }],
       },
     },
     {

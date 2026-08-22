@@ -80,7 +80,7 @@ export function ProductCard({
             width={640}
             height={640}
             loading={priority ? 'eager' : 'lazy'}
-            fetchPriority={priority ? 'high' : 'auto'}
+            fetchpriority={priority ? 'high' : 'auto'}
             decoding="async"
             className="size-full object-cover transition-transform duration-300 group-hover:scale-105"
           />

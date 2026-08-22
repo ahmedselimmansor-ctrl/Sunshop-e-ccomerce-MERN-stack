@@ -156,7 +156,7 @@ export function ProductPage() {
                 alt={localized(images[activeImage]!.alt, locale) || name}
                 width={960}
                 height={960}
-                fetchPriority="high"
+                fetchpriority="high"
                 className="aspect-square size-full object-cover"
               />
             ) : (
