@@ -12,10 +12,27 @@
         try {
           var stored = JSON.parse(localStorage.getItem('sunshop-admin-ui') || '{}').state || {};
           var theme = stored.theme || 'system';
-          if (theme === 'dark' || (theme === 'system' && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
+          if (
+            theme === 'dark' ||
+            (theme === 'system' && window.matchMedia('(prefers-color-scheme: dark)').matches)
+          ) {
             document.documentElement.classList.add('dark');
           }
-          var locale = stored.locale || 'en';
+          // Mirrors detectInitialLocale() in stores/ui.ts. Without it a first
+          // visit from an Arabic browser painted LTR, then flipped to RTL once
+          // React mounted.
+          var locale =
+            stored.locale ||
+            (function () {
+              var langs = [localStorage.getItem('sunshop-admin-language')].concat(
+                navigator.languages || [navigator.language] || [],
+              );
+              for (var i = 0; i < langs.length; i++) {
+                var base = (langs[i] || '').split('-')[0].toLowerCase();
+                if (base === 'ar' || base === 'en') return base;
+              }
+              return 'en';
+            })();
           document.documentElement.lang = locale;
           document.documentElement.dir = locale === 'ar' ? 'rtl' : 'ltr';
         } catch (error) {}

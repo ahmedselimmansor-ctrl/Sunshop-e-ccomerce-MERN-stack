@@ -1,4 +1,10 @@
-import { LOCALE_DIRECTION, type Locale, type Theme } from '@sunshop/shared';
+import {
+  DEFAULT_LOCALE,
+  LOCALES,
+  LOCALE_DIRECTION,
+  type Locale,
+  type Theme,
+} from '@sunshop/shared';
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 
@@ -49,11 +55,32 @@ function applyLocale(locale: Locale): void {
   document.documentElement.dir = LOCALE_DIRECTION[locale];
 }
 
+/**
+ * Locale for a visitor with nothing persisted yet.
+ *
+ * i18next detects the language on its own, from its cached key and then the
+ * browser, so a hardcoded 'en' here left the two disagreeing on a first visit:
+ * an Arabic browser rendered Arabic text inside a `dir="ltr" lang="en"`
+ * document, with the navigation on the wrong side and every logical property
+ * resolved backwards. Reading the same sources the detector reads keeps the
+ * document and the copy in the same language from the first paint.
+ */
+function detectInitialLocale(): Locale {
+  if (typeof window === 'undefined') return DEFAULT_LOCALE;
+  const cached = window.localStorage.getItem('sunshop-language');
+  const candidates = [cached, ...(navigator.languages ?? [navigator.language])];
+  for (const candidate of candidates) {
+    const base = candidate?.split('-')[0]?.toLowerCase();
+    if (base && (LOCALES as readonly string[]).includes(base)) return base as Locale;
+  }
+  return DEFAULT_LOCALE;
+}
+
 export const useUiStore = create<UiState>()(
   persist(
     (set, get) => ({
       theme: 'system',
-      locale: 'en',
+      locale: detectInitialLocale(),
       resolvedTheme: 'light',
       cartOpen: false,
       mobileNavOpen: false,
@@ -81,9 +108,12 @@ export const useUiStore = create<UiState>()(
       // user closed yesterday is not "restoring their session".
       partialize: (state) => ({ theme: state.theme, locale: state.locale }),
       onRehydrateStorage: () => (state) => {
-        if (!state) return;
-        state.resolvedTheme = applyTheme(state.theme);
-        applyLocale(state.locale);
+        // A first visit has nothing to rehydrate, so this never ran and the
+        // detected locale was never written to <html>. Fall back to the
+        // store's own state rather than returning early.
+        const current = state ?? useUiStore.getState();
+        current.resolvedTheme = applyTheme(current.theme);
+        applyLocale(current.locale);
       },
     },
   ),

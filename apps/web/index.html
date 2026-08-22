@@ -25,8 +25,21 @@
           if (theme === 'dark' || (theme === 'system' && prefersDark)) {
             document.documentElement.classList.add('dark');
           }
-          var locale = stored.locale || (navigator.language || 'en').slice(0, 2);
-          if (locale !== 'ar' && locale !== 'en') locale = 'en';
+          // Mirrors detectInitialLocale() in stores/ui.ts: the cached language
+          // first, then the browser. Checking only navigator disagreed with the
+          // store when i18next had cached a choice, which flashed LTR then RTL.
+          var locale =
+            stored.locale ||
+            (function () {
+              var langs = [localStorage.getItem('sunshop-language')].concat(
+                navigator.languages || [navigator.language] || [],
+              );
+              for (var i = 0; i < langs.length; i++) {
+                var base = (langs[i] || '').split('-')[0].toLowerCase();
+                if (base === 'ar' || base === 'en') return base;
+              }
+              return 'en';
+            })();
           document.documentElement.lang = locale;
           document.documentElement.dir = locale === 'ar' ? 'rtl' : 'ltr';
         } catch (error) {
