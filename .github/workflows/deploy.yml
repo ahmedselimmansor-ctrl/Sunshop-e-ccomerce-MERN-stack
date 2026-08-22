@@ -28,7 +28,34 @@ env:
   ECR_REGISTRY: ${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.eu-central-1.amazonaws.com
 
 jobs:
+  # Deploying needs AWS OIDC federation, which a fork or a fresh clone will not
+  # have. Without this gate the workflow fails on every push to main with
+  # "Credentials could not be loaded", which trains everyone to ignore a red
+  # Deploy badge and hides a genuine failure when one happens. The `secrets`
+  # context is not available in a job-level `if`, so the check has to surface
+  # as an output first.
+  preflight:
+    name: Check deploy credentials
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    outputs:
+      configured: ${{ steps.check.outputs.configured }}
+    steps:
+      - id: check
+        env:
+          ROLE_ARN: ${{ secrets.AWS_DEPLOY_ROLE_ARN }}
+          ACCOUNT_ID: ${{ secrets.AWS_ACCOUNT_ID }}
+        run: |
+          if [ -n "$ROLE_ARN" ] && [ -n "$ACCOUNT_ID" ]; then
+            echo "configured=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "configured=false" >> "$GITHUB_OUTPUT"
+            echo "::notice title=Deploy skipped::Set the AWS_DEPLOY_ROLE_ARN and AWS_ACCOUNT_ID repository secrets to enable deployment."
+          fi
+
   build-images:
+    needs: preflight
+    if: needs.preflight.outputs.configured == 'true'
     name: Build and push images
     runs-on: ubuntu-latest
     timeout-minutes: 30
@@ -44,10 +71,10 @@ jobs:
             dockerfile: infra/docker/admin.Dockerfile
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
       - name: Authenticate to AWS
-        uses: aws-actions/configure-aws-credentials@v4
+        uses: aws-actions/configure-aws-credentials@v5
         with:
           role-to-assume: ${{ secrets.AWS_DEPLOY_ROLE_ARN }}
           aws-region: ${{ env.AWS_REGION }}
@@ -88,7 +115,8 @@ jobs:
 
   deploy:
     name: Roll out to ${{ github.event.inputs.environment || 'staging' }}
-    needs: build-images
+    needs: [preflight, build-images]
+    if: needs.preflight.outputs.configured == 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 20
     # Production requires a manual approval configured on the GitHub
@@ -96,10 +124,10 @@ jobs:
     environment: ${{ github.event.inputs.environment || 'staging' }}
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
       - name: Authenticate to AWS
-        uses: aws-actions/configure-aws-credentials@v4
+        uses: aws-actions/configure-aws-credentials@v5
         with:
           role-to-assume: ${{ secrets.AWS_DEPLOY_ROLE_ARN }}
           aws-region: ${{ env.AWS_REGION }}
