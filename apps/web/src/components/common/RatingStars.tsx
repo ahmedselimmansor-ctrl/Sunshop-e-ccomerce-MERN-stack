@@ -39,18 +39,30 @@ export function RatingStars({ value, count, size = 'sm', className }: RatingStar
          */}
         <span className="text-muted-foreground inline-flex">
           {Array.from({ length: 5 }, (_, index) => (
-            <Star key={index} className={starSize} fill="none" strokeWidth={1.5} />
+            <Star key={index} className={cn(starSize, 'shrink-0')} fill="none" strokeWidth={1.5} />
           ))}
         </span>
-        {/* Clipped overlay: width is the exact fraction, direction-safe. The
-            amber stroke covers the outline beneath, so a filled star reads as
-            solid rather than rimmed. */}
+        {/*
+         * Clipped overlay: width is the exact fraction, direction-safe.
+         *
+         * `shrink-0` is what makes this a clip rather than a squeeze. These
+         * stars are flex children of a box narrowed to the rating fraction,
+         * and a flex child shrinks before it overflows, so without it all five
+         * stars were compressed horizontally into that box: a 3.7 rendered as
+         * five squashed stars rather than three and a bit. It looked plausible
+         * only because the layer underneath was too faint to compare against.
+         */}
         <span
           className="text-warning absolute inset-0 inline-flex overflow-hidden rtl:flex-row-reverse"
           style={{ width: `${percentage}%` }}
         >
           {Array.from({ length: 5 }, (_, index) => (
-            <Star key={index} className={starSize} fill="currentColor" strokeWidth={1.5} />
+            <Star
+              key={index}
+              className={cn(starSize, 'shrink-0')}
+              fill="currentColor"
+              strokeWidth={1.5}
+            />
           ))}
         </span>
       </span>
