@@ -1,0 +1,82 @@
+# Search reindex, run on demand or after a mapping change.
+#
+# Safe to run against production: it builds a new index and swaps the alias only
+# once the build succeeds, so search keeps answering from the old index the
+# whole time.
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: sunshop-reindex
+  namespace: sunshop
+spec:
+  backoffLimit: 2
+  ttlSecondsAfterFinished: 86400
+  template:
+    spec:
+      restartPolicy: Never
+      serviceAccountName: sunshop-api
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 10001
+        seccompProfile: { type: RuntimeDefault }
+      containers:
+        - name: reindex
+          image: ACCOUNT.dkr.ecr.eu-central-1.amazonaws.com/sunshop-api:latest
+          command: ["node", "dist/scripts/reindex.js"]
+          envFrom:
+            - configMapRef: { name: sunshop-api-config }
+            - secretRef: { name: sunshop-api-secrets }
+          resources:
+            requests: { cpu: 200m, memory: 512Mi }
+            limits: { memory: 1Gi }
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities: { drop: ["ALL"] }
+          volumeMounts:
+            - { name: tmp, mountPath: /tmp }
+      volumes:
+        - name: tmp
+          emptyDir: {}
+---
+# Nightly consistency pass. The outbox keeps the index current in real time;
+# this catches anything a dead-lettered event dropped, so the index cannot
+# silently drift for weeks.
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: sunshop-reindex-nightly
+  namespace: sunshop
+spec:
+  schedule: "30 3 * * *"
+  timeZone: "Etc/UTC"
+  concurrencyPolicy: Forbid
+  successfulJobsHistoryLimit: 3
+  failedJobsHistoryLimit: 3
+  jobTemplate:
+    spec:
+      backoffLimit: 1
+      template:
+        spec:
+          restartPolicy: Never
+          serviceAccountName: sunshop-api
+          securityContext:
+            runAsNonRoot: true
+            runAsUser: 10001
+            seccompProfile: { type: RuntimeDefault }
+          containers:
+            - name: reindex
+              image: ACCOUNT.dkr.ecr.eu-central-1.amazonaws.com/sunshop-api:latest
+              command: ["node", "dist/scripts/reindex.js"]
+              envFrom:
+                - configMapRef: { name: sunshop-api-config }
+                - secretRef: { name: sunshop-api-secrets }
+              securityContext:
+                allowPrivilegeEscalation: false
+                readOnlyRootFilesystem: true
+                capabilities: { drop: ["ALL"] }
+              volumeMounts:
+                - { name: tmp, mountPath: /tmp }
+          volumes:
+            - name: tmp
+              emptyDir: {}

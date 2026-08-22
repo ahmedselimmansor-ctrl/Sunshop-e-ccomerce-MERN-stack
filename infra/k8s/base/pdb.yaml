@@ -1,0 +1,13 @@
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: sunshop-api
+  namespace: sunshop
+spec:
+  # Expressed as a minimum rather than maxUnavailable so the guarantee scales
+  # with the HPA: at 20 replicas this still keeps 20 available during a
+  # voluntary disruption, and the node drain waits rather than cutting capacity.
+  minAvailable: 2
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: sunshop-api

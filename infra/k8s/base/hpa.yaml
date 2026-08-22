@@ -1,0 +1,55 @@
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: sunshop-api
+  namespace: sunshop
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: sunshop-api
+  minReplicas: 3
+  maxReplicas: 30
+  metrics:
+    - type: Resource
+      resource:
+        name: cpu
+        target:
+          type: Utilization
+          averageUtilization: 65
+    - type: Resource
+      resource:
+        name: memory
+        target:
+          type: Utilization
+          averageUtilization: 75
+    # Requests-per-pod from Prometheus: CPU alone reacts late for an I/O-bound
+    # API that spends most of its time waiting on MongoDB rather than burning
+    # cycles.
+    - type: Pods
+      pods:
+        metric:
+          name: sunshop_http_requests_per_second
+        target:
+          type: AverageValue
+          averageValue: "80"
+  behavior:
+    scaleUp:
+      # React fast to a flash sale.
+      stabilizationWindowSeconds: 30
+      policies:
+        - type: Percent
+          value: 100
+          periodSeconds: 30
+        - type: Pods
+          value: 4
+          periodSeconds: 30
+      selectPolicy: Max
+    scaleDown:
+      # Come down slowly: a five-minute window avoids thrashing on a spiky
+      # traffic pattern, and idle pods are cheaper than cold starts.
+      stabilizationWindowSeconds: 300
+      policies:
+        - type: Pods
+          value: 1
+          periodSeconds: 60

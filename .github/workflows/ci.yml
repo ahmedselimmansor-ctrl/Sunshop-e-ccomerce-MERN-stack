@@ -1,0 +1,196 @@
+name: CI
+
+on:
+  push:
+    branches: [main, develop]
+  pull_request:
+    branches: [main, develop]
+
+# A new push supersedes an in-flight run for the same ref: no point burning
+# minutes on a commit nobody will merge.
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+env:
+  NODE_VERSION: "22.12.0"
+
+jobs:
+  build:
+    name: Lint, typecheck, test
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+
+      - name: Install
+        run: npm ci --workspaces --include-workspace-root
+
+      # Everything downstream imports the shared package's built types.
+      - name: Build shared package
+        run: npm run build -w @sunshop/shared
+
+      - name: Lint
+        run: npm run lint
+
+      - name: Format check
+        run: npm run format:check
+
+      - name: Typecheck
+        run: npm run typecheck
+
+      - name: Test
+        run: npm run test -w @sunshop/server -- --coverage
+
+      - name: Build apps
+        run: |
+          npm run build -w @sunshop/server
+          npm run build -w @sunshop/web
+          npm run build -w @sunshop/admin
+        env:
+          VITE_API_URL: /api/v1
+          VITE_CDN_URL: https://cdn.sunshop.example
+
+      - name: Upload coverage
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage
+          path: apps/server/coverage
+          retention-days: 7
+
+  security:
+    name: Dependency and secret scanning
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      contents: read
+      security-events: write
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          # Secret scanning needs history to diff against.
+          fetch-depth: 0
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+
+      - name: Install
+        run: npm ci --workspaces --include-workspace-root
+
+      # High and critical only: failing a build on a low-severity advisory in a
+      # dev dependency trains people to ignore the gate.
+      - name: Audit dependencies
+        run: npm audit --audit-level=high
+
+      - name: Scan filesystem for vulnerabilities
+        uses: aquasecurity/trivy-action@0.28.0
+        with:
+          scan-type: fs
+          scan-ref: .
+          severity: HIGH,CRITICAL
+          ignore-unfixed: true
+          format: sarif
+          output: trivy-fs.sarif
+
+      - name: Upload results
+        if: always()
+        uses: github/codeql-action/upload-sarif@v3
+        with:
+          sarif_file: trivy-fs.sarif
+
+      - name: Scan for committed secrets
+        uses: gitleaks/gitleaks-action@v2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  mobile:
+    name: Android build
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    # This job used to be advisory (continue-on-error) and gated on a condition
+    # that never matched on push: `head_commit.modified` is an array of file
+    # paths, and `contains` compares whole elements, so 'apps/mobile' matched
+    # nothing. Between the two, the app went unbuilt long enough to accumulate
+    # missing launcher icons, four Kotlin compile errors and an R8 failure. It
+    # runs on every change and it gates now.
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          # Matches the JBR that Android Studio bundles, so CI and desktop
+          # builds agree.
+          java-version: "21"
+          cache: gradle
+
+      - name: Build and test
+        working-directory: apps/mobile
+        run: |
+          chmod +x ./gradlew
+          ./gradlew --no-daemon assembleDebug testDebugUnitTest
+
+      # R8 and resource shrinking only run for release, and they fail on
+      # problems a debug build never sees. Unsigned is fine: no keystore is
+      # needed to prove the shrinker is happy.
+      - name: Verify release build (R8)
+        working-directory: apps/mobile
+        run: ./gradlew --no-daemon assembleRelease
+
+      - name: Upload test results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: android-test-results
+          path: apps/mobile/app/build/reports/tests/
+          retention-days: 7
+
+  infra:
+    name: Terraform and Kubernetes validation
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: "1.10.3"
+
+      - name: Terraform format
+        run: terraform -chdir=infra/terraform fmt -check -recursive
+
+      - name: Terraform validate
+        run: |
+          terraform -chdir=infra/terraform init -backend=false
+          terraform -chdir=infra/terraform validate
+
+      # Scans the plan-time configuration for misconfigurations: public
+      # buckets, unencrypted volumes, permissive security groups.
+      - name: Scan IaC
+        uses: aquasecurity/trivy-action@0.28.0
+        with:
+          scan-type: config
+          scan-ref: infra
+          severity: HIGH,CRITICAL
+
+      - name: Render Kubernetes manifests
+        run: |
+          curl -sSLo kustomize.tar.gz https://github.com/kubernetes-sigs/kustomize/releases/download/kustomize%2Fv5.5.0/kustomize_v5.5.0_linux_amd64.tar.gz
+          tar -xzf kustomize.tar.gz
+          ./kustomize build infra/k8s/overlays/production > /dev/null
+          ./kustomize build infra/k8s/overlays/staging > /dev/null

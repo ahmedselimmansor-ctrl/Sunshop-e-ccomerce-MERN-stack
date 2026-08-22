@@ -1,0 +1,152 @@
+name: Deploy
+
+on:
+  push:
+    branches: [main]
+    tags: ["v*"]
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: Target environment
+        required: true
+        default: staging
+        type: choice
+        options: [staging, production]
+
+concurrency:
+  # Never let two deploys race to the same cluster.
+  group: deploy-${{ github.event.inputs.environment || 'staging' }}
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+  # OIDC federation with AWS: no long-lived access keys in GitHub secrets.
+  id-token: write
+
+env:
+  AWS_REGION: eu-central-1
+  ECR_REGISTRY: ${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.eu-central-1.amazonaws.com
+
+jobs:
+  build-images:
+    name: Build and push images
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    strategy:
+      matrix:
+        include:
+          - name: api
+            dockerfile: infra/docker/server.Dockerfile
+          - name: web
+            dockerfile: infra/docker/web.Dockerfile
+          - name: admin
+            dockerfile: infra/docker/admin.Dockerfile
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Authenticate to AWS
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_DEPLOY_ROLE_ARN }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - uses: aws-actions/amazon-ecr-login@v2
+        id: ecr
+
+      - uses: docker/setup-buildx-action@v3
+
+      - name: Build and push
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: ${{ matrix.dockerfile }}
+          push: true
+          # Graviton nodes run arm64; building both keeps local x86 development
+          # on the same image.
+          platforms: linux/amd64,linux/arm64
+          tags: |
+            ${{ env.ECR_REGISTRY }}/sunshop-${{ matrix.name }}:${{ github.sha }}
+            ${{ env.ECR_REGISTRY }}/sunshop-${{ matrix.name }}:latest
+          cache-from: type=gha,scope=${{ matrix.name }}
+          cache-to: type=gha,mode=max,scope=${{ matrix.name }}
+          provenance: true
+          sbom: true
+          build-args: |
+            VITE_API_URL=https://api.sunshop.example/api/v1
+            VITE_CDN_URL=https://cdn.sunshop.example
+            VITE_STRIPE_PUBLISHABLE_KEY=${{ secrets.STRIPE_PUBLISHABLE_KEY }}
+
+      - name: Scan the built image
+        uses: aquasecurity/trivy-action@0.28.0
+        with:
+          image-ref: ${{ env.ECR_REGISTRY }}/sunshop-${{ matrix.name }}:${{ github.sha }}
+          severity: HIGH,CRITICAL
+          ignore-unfixed: true
+          exit-code: "1"
+
+  deploy:
+    name: Roll out to ${{ github.event.inputs.environment || 'staging' }}
+    needs: build-images
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    # Production requires a manual approval configured on the GitHub
+    # environment; staging deploys straight through.
+    environment: ${{ github.event.inputs.environment || 'staging' }}
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Authenticate to AWS
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_DEPLOY_ROLE_ARN }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Configure kubectl
+        run: |
+          aws eks update-kubeconfig \
+            --region ${{ env.AWS_REGION }} \
+            --name sunshop-${{ github.event.inputs.environment || 'staging' }}
+
+      - name: Set image tags
+        run: |
+          curl -sSLo kustomize.tar.gz https://github.com/kubernetes-sigs/kustomize/releases/download/kustomize%2Fv5.5.0/kustomize_v5.5.0_linux_amd64.tar.gz
+          tar -xzf kustomize.tar.gz
+          cd infra/k8s/overlays/${{ github.event.inputs.environment || 'staging' }}
+          ../../../../kustomize edit set image \
+            ACCOUNT.dkr.ecr.eu-central-1.amazonaws.com/sunshop-api=${{ env.ECR_REGISTRY }}/sunshop-api:${{ github.sha }} \
+            ACCOUNT.dkr.ecr.eu-central-1.amazonaws.com/sunshop-web=${{ env.ECR_REGISTRY }}/sunshop-web:${{ github.sha }} \
+            ACCOUNT.dkr.ecr.eu-central-1.amazonaws.com/sunshop-admin=${{ env.ECR_REGISTRY }}/sunshop-admin:${{ github.sha }}
+
+      - name: Apply
+        run: |
+          ./kustomize build infra/k8s/overlays/${{ github.event.inputs.environment || 'staging' }} | kubectl apply -f -
+
+      # `rollout status` is the gate: if the new pods never become ready, this
+      # fails and the next step rolls back rather than leaving a broken deploy.
+      - name: Wait for rollout
+        id: rollout
+        run: |
+          kubectl -n sunshop rollout status deployment/sunshop-api --timeout=5m
+          kubectl -n sunshop rollout status deployment/sunshop-web --timeout=3m
+          kubectl -n sunshop rollout status deployment/sunshop-admin --timeout=3m
+
+      - name: Roll back on failure
+        if: failure() && steps.rollout.outcome == 'failure'
+        run: |
+          kubectl -n sunshop rollout undo deployment/sunshop-api
+          kubectl -n sunshop rollout undo deployment/sunshop-web
+          kubectl -n sunshop rollout undo deployment/sunshop-admin
+          exit 1
+
+      - name: Smoke test
+        run: |
+          set -e
+          BASE="https://api.sunshop.example"
+          curl -fsS "$BASE/healthz" > /dev/null
+          curl -fsS "$BASE/readyz"  > /dev/null
+          # A 200 with products proves the database and cache paths work, not
+          # just that the process started.
+          curl -fsS "$BASE/api/v1/products?limit=1" | grep -q '"ok":true'

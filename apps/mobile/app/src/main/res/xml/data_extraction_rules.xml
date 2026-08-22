@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Auth tokens live in EncryptedSharedPreferences and must never leave the
+  device through cloud backup or a device-to-device transfer: the key is
+  hardware-bound, so a restored copy would be unreadable anyway, and a restored
+  *session* would be a credential leak.
+-->
+<data-extraction-rules>
+    <cloud-backup>
+        <exclude domain="sharedpref" path="sunshop_secure_prefs.xml" />
+        <exclude domain="database" path="sunshop.db" />
+    </cloud-backup>
+    <device-transfer>
+        <exclude domain="sharedpref" path="sunshop_secure_prefs.xml" />
+    </device-transfer>
+</data-extraction-rules>

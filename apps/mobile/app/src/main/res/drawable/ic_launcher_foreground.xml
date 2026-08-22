@@ -1,0 +1,103 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+    Sunshop launcher mark: an amber sun, matching SunshopAmber (#F59E0B) from
+    ui/theme/Theme.kt.
+
+    Drawn on the 108x108dp adaptive-icon canvas. Everything stays inside the
+    66dp safe circle centred at (54,54) so no launcher mask can clip a ray:
+    the rays reach r=27 plus half the 5.5dp stroke, i.e. r≈30 against the 33dp
+    limit.
+-->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+
+    <!-- Sun disc -->
+    <path
+        android:fillColor="#F59E0B"
+        android:pathData="M39,54a15,15 0 1,0 30,0a15,15 0 1,0 -30,0z" />
+
+    <!-- Eight rays, one group per 45° step around the disc. -->
+    <group
+        android:pivotX="54"
+        android:pivotY="54"
+        android:rotation="0">
+        <path
+            android:pathData="M54,17L54,27"
+            android:strokeColor="#F59E0B"
+            android:strokeLineCap="round"
+            android:strokeWidth="5.5" />
+    </group>
+    <group
+        android:pivotX="54"
+        android:pivotY="54"
+        android:rotation="45">
+        <path
+            android:pathData="M54,17L54,27"
+            android:strokeColor="#F59E0B"
+            android:strokeLineCap="round"
+            android:strokeWidth="5.5" />
+    </group>
+    <group
+        android:pivotX="54"
+        android:pivotY="54"
+        android:rotation="90">
+        <path
+            android:pathData="M54,17L54,27"
+            android:strokeColor="#F59E0B"
+            android:strokeLineCap="round"
+            android:strokeWidth="5.5" />
+    </group>
+    <group
+        android:pivotX="54"
+        android:pivotY="54"
+        android:rotation="135">
+        <path
+            android:pathData="M54,17L54,27"
+            android:strokeColor="#F59E0B"
+            android:strokeLineCap="round"
+            android:strokeWidth="5.5" />
+    </group>
+    <group
+        android:pivotX="54"
+        android:pivotY="54"
+        android:rotation="180">
+        <path
+            android:pathData="M54,17L54,27"
+            android:strokeColor="#F59E0B"
+            android:strokeLineCap="round"
+            android:strokeWidth="5.5" />
+    </group>
+    <group
+        android:pivotX="54"
+        android:pivotY="54"
+        android:rotation="225">
+        <path
+            android:pathData="M54,17L54,27"
+            android:strokeColor="#F59E0B"
+            android:strokeLineCap="round"
+            android:strokeWidth="5.5" />
+    </group>
+    <group
+        android:pivotX="54"
+        android:pivotY="54"
+        android:rotation="270">
+        <path
+            android:pathData="M54,17L54,27"
+            android:strokeColor="#F59E0B"
+            android:strokeLineCap="round"
+            android:strokeWidth="5.5" />
+    </group>
+    <group
+        android:pivotX="54"
+        android:pivotY="54"
+        android:rotation="315">
+        <path
+            android:pathData="M54,17L54,27"
+            android:strokeColor="#F59E0B"
+            android:strokeLineCap="round"
+            android:strokeWidth="5.5" />
+    </group>
+</vector>

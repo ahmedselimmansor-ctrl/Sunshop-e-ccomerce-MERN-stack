@@ -1,0 +1,41 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+namespace: sunshop-staging
+
+resources:
+  - ../../base
+
+nameSuffix: ""
+
+patches:
+  # Staging runs a smaller fleet and keeps the interactive API docs enabled.
+  - target: { kind: Deployment, name: sunshop-api }
+    patch: |
+      - op: replace
+        path: /spec/replicas
+        value: 2
+  - target: { kind: HorizontalPodAutoscaler, name: sunshop-api }
+    patch: |
+      - op: replace
+        path: /spec/minReplicas
+        value: 2
+      - op: replace
+        path: /spec/maxReplicas
+        value: 6
+  - target: { kind: PodDisruptionBudget, name: sunshop-api }
+    patch: |
+      - op: replace
+        path: /spec/minAvailable
+        value: 1
+
+configMapGenerator:
+  - name: sunshop-api-config
+    behavior: merge
+    literals:
+      - LOG_LEVEL=debug
+      - SWAGGER_ENABLED=true
+      - CORS_ORIGINS=https://staging.sunshop.example,https://admin-staging.sunshop.example
+      - PUBLIC_WEB_URL=https://staging.sunshop.example
+      - PUBLIC_API_URL=https://api-staging.sunshop.example
+      - COOKIE_DOMAIN=.sunshop.example

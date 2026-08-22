@@ -1,0 +1,16 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: sunshop-api
+  namespace: sunshop
+  labels:
+    app.kubernetes.io/name: sunshop-api
+spec:
+  type: ClusterIP
+  selector:
+    app.kubernetes.io/name: sunshop-api
+  ports:
+    - name: http
+      port: 80
+      targetPort: http
+      protocol: TCP

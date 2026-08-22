@@ -1,0 +1,67 @@
+# ALB ingress.
+#
+# One load balancer fronts all three hostnames, terminating TLS with an ACM
+# certificate and forwarding to pods by IP (target-type: ip), which skips the
+# node-port hop and keeps the client IP intact for rate limiting.
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: sunshop
+  namespace: sunshop
+  annotations:
+    kubernetes.io/ingress.class: alb
+    alb.ingress.kubernetes.io/scheme: internet-facing
+    alb.ingress.kubernetes.io/target-type: ip
+    alb.ingress.kubernetes.io/listen-ports: '[{"HTTP": 80}, {"HTTPS": 443}]'
+    alb.ingress.kubernetes.io/ssl-redirect: "443"
+    alb.ingress.kubernetes.io/certificate-arn: arn:aws:acm:eu-central-1:000000000000:certificate/REPLACE_ME
+    alb.ingress.kubernetes.io/ssl-policy: ELBSecurityPolicy-TLS13-1-2-2021-06
+
+    # Health checks hit the API's liveness path, not a business endpoint.
+    alb.ingress.kubernetes.io/healthcheck-path: /healthz
+    alb.ingress.kubernetes.io/healthcheck-interval-seconds: "15"
+    alb.ingress.kubernetes.io/healthy-threshold-count: "2"
+    alb.ingress.kubernetes.io/unhealthy-threshold-count: "3"
+
+    # Must be below the pods' keep-alive timeout (65s) or the ALB will reuse a
+    # connection Node has just closed and the client sees a spurious 502.
+    alb.ingress.kubernetes.io/load-balancer-attributes: idle_timeout.timeout_seconds=60,routing.http2.enabled=true,access_logs.s3.enabled=true,access_logs.s3.bucket=sunshop-alb-logs,deletion_protection.enabled=true
+
+    # Drain time for in-flight requests when a pod is removed.
+    alb.ingress.kubernetes.io/target-group-attributes: deregistration_delay.timeout_seconds=30,load_balancing.algorithm.type=least_outstanding_requests
+
+    # WAF absorbs volumetric floods and common exploits before they cost a pod.
+    alb.ingress.kubernetes.io/wafv2-acl-arn: arn:aws:wafv2:eu-central-1:000000000000:regional/webacl/sunshop/REPLACE_ME
+
+    alb.ingress.kubernetes.io/tags: Project=sunshop,Environment=production
+spec:
+  rules:
+    - host: api.sunshop.example
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: sunshop-api
+                port: { name: http }
+
+    - host: sunshop.example
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: sunshop-web
+                port: { name: http }
+
+    - host: admin.sunshop.example
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: sunshop-admin
+                port: { name: http }

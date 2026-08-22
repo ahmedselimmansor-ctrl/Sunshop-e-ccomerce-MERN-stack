@@ -1,0 +1,72 @@
+# dependencies
+node_modules/
+.pnp
+.pnp.js
+
+# builds
+dist/
+build/
+out/
+.next/
+*.tsbuildinfo
+
+# env & secrets
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+!infra/**/*.key.example
+secrets/
+.terraform/
+*.tfstate
+*.tfstate.*
+.terraform.lock.hcl
+crash.log
+override.tf
+override.tf.json
+
+# logs
+logs/
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# testing
+coverage/
+.nyc_output/
+test-results/
+playwright-report/
+
+# editors / os
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/*
+!.vscode/extensions.json
+!.vscode/settings.example.json
+*.swp
+
+# runtime data
+uploads/
+tmp/
+.cache/
+
+# android / kotlin
+apps/mobile/.gradle/
+# The wrapper jar is checked in on purpose: it is what pins the Gradle version
+# for anyone who clones the repo, CI included.
+!apps/mobile/gradle/wrapper/gradle-wrapper.jar
+apps/mobile/build/
+apps/mobile/app/build/
+apps/mobile/local.properties
+apps/mobile/.idea/
+apps/mobile/captures/
+*.apk
+*.aab
+*.keystore
+# Upload/release keys are usually .jks; committing one is unrecoverable.
+*.jks
+!apps/mobile/debug.keystore

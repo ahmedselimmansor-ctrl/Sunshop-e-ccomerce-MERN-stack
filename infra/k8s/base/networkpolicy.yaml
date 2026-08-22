@@ -1,0 +1,100 @@
+# Default-deny, then allow exactly what the API needs.
+#
+# Without this, a compromised sidecar in any namespace can reach the database
+# credentials endpoint and the metrics port. Lateral movement is the whole point
+# of network policy: the API talks to Mongo, Redis and OpenSearch and to
+# nothing else inside the cluster.
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: default-deny
+  namespace: sunshop
+spec:
+  podSelector: {}
+  policyTypes: [Ingress, Egress]
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: sunshop-api
+  namespace: sunshop
+spec:
+  podSelector:
+    matchLabels:
+      app.kubernetes.io/name: sunshop-api
+  policyTypes: [Ingress, Egress]
+
+  ingress:
+    # Only the ALB target group (which lives in the VPC CIDR) may reach 4000.
+    - from:
+        - ipBlock:
+            cidr: 10.0.0.0/16
+      ports:
+        - { protocol: TCP, port: 4000 }
+    # Prometheus scrapes /metrics from the observability namespace.
+    - from:
+        - namespaceSelector:
+            matchLabels: { name: observability }
+      ports:
+        - { protocol: TCP, port: 4000 }
+
+  egress:
+    # DNS.
+    - to:
+        - namespaceSelector:
+            matchLabels: { kubernetes.io/metadata.name: kube-system }
+      ports:
+        - { protocol: UDP, port: 53 }
+        - { protocol: TCP, port: 53 }
+
+    # Managed data stores live outside the cluster, inside the VPC.
+    - to:
+        - ipBlock:
+            cidr: 10.0.0.0/16
+      ports:
+        - { protocol: TCP, port: 27017 } # DocumentDB
+        - { protocol: TCP, port: 6379 } # ElastiCache
+        - { protocol: TCP, port: 443 } # OpenSearch, S3 VPC endpoints
+
+    # Outbound HTTPS for Stripe and SES.
+    - to:
+        - ipBlock:
+            cidr: 0.0.0.0/0
+            except:
+              # Never let a workload reach the instance metadata service: that
+              # is how a compromised pod escalates to the node's IAM role.
+              - 169.254.169.254/32
+      ports:
+        - { protocol: TCP, port: 443 }
+
+    # OTel collector.
+    - to:
+        - namespaceSelector:
+            matchLabels: { name: observability }
+      ports:
+        - { protocol: TCP, port: 4318 }
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: sunshop-static
+  namespace: sunshop
+spec:
+  podSelector:
+    matchExpressions:
+      - key: app.kubernetes.io/name
+        operator: In
+        values: [sunshop-web, sunshop-admin]
+  policyTypes: [Ingress, Egress]
+  ingress:
+    - from:
+        - ipBlock: { cidr: 10.0.0.0/16 }
+      ports:
+        - { protocol: TCP, port: 8080 }
+  egress:
+    # Static hosting needs DNS and nothing else.
+    - to:
+        - namespaceSelector:
+            matchLabels: { kubernetes.io/metadata.name: kube-system }
+      ports:
+        - { protocol: UDP, port: 53 }

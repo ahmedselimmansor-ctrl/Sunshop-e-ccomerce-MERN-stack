@@ -1,0 +1,66 @@
+{
+  "name": "sunshop",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Sunshop, production-grade MERN e-commerce platform designed for AWS (EKS) deployment",
+  "license": "MIT",
+  "engines": {
+    "node": ">=20.19.0",
+    "npm": ">=10.0.0"
+  },
+  "workspaces": [
+    "packages/*",
+    "apps/server",
+    "apps/web",
+    "apps/admin"
+  ],
+  "scripts": {
+    "build": "npm run build -w @sunshop/shared && npm run build -w @sunshop/server && npm run build -w @sunshop/web && npm run build -w @sunshop/admin",
+    "build:shared": "npm run build -w @sunshop/shared",
+    "dev": "npm run build -w @sunshop/shared && concurrently -k -n shared,api,web,admin -c cyan,green,magenta,yellow \"npm:dev:shared\" \"npm:dev:api\" \"npm:dev:web\" \"npm:dev:admin\"",
+    "dev:shared": "npm run dev -w @sunshop/shared",
+    "dev:api": "npm run dev -w @sunshop/server",
+    "dev:web": "npm run dev -w @sunshop/web",
+    "dev:admin": "npm run dev -w @sunshop/admin",
+    "lint": "eslint . --ext .ts,.tsx --max-warnings=0",
+    "lint:fix": "eslint . --ext .ts,.tsx --fix",
+    "format": "prettier --write \"**/*.{ts,tsx,js,json,md,yml,yaml}\"",
+    "format:check": "prettier --check \"**/*.{ts,tsx,js,json,md,yml,yaml}\"",
+    "typecheck": "npm run typecheck --workspaces --if-present",
+    "test": "npm run test --workspaces --if-present",
+    "test:api": "npm run test -w @sunshop/server",
+    "seed": "npm run seed -w @sunshop/server",
+    "infra:up": "docker compose -f docker-compose.yml up -d",
+    "infra:down": "docker compose -f docker-compose.yml down",
+    "infra:logs": "docker compose -f docker-compose.yml logs -f",
+    "infra:reset": "docker compose -f docker-compose.yml down -v",
+    "stack:up": "docker compose -f docker-compose.yml --profile apps up -d --build",
+    "prepare": "husky || true"
+  },
+  "devDependencies": {
+    "@types/node": "^22.10.2",
+    "@typescript-eslint/eslint-plugin": "^8.18.0",
+    "@typescript-eslint/parser": "^8.18.0",
+    "concurrently": "^9.1.0",
+    "eslint": "^8.57.1",
+    "eslint-config-prettier": "^9.1.0",
+    "eslint-import-resolver-typescript": "^3.10.1",
+    "eslint-plugin-import": "^2.31.0",
+    "eslint-plugin-react": "^7.37.2",
+    "eslint-plugin-react-hooks": "^5.1.0",
+    "husky": "^9.1.7",
+    "lint-staged": "^15.2.11",
+    "prettier": "^3.4.2",
+    "prettier-plugin-tailwindcss": "^0.6.9",
+    "typescript": "^5.7.2"
+  },
+  "lint-staged": {
+    "*.{ts,tsx}": [
+      "eslint --fix",
+      "prettier --write"
+    ],
+    "*.{json,md,yml,yaml,css}": [
+      "prettier --write"
+    ]
+  }
+}

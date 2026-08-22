@@ -1,0 +1,13 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: sunshop
+  labels:
+    name: sunshop
+    # Enforce the restricted Pod Security Standard: no privileged containers,
+    # no host namespaces, no running as root. Enforced, not just audited: a
+    # warning nobody reads is not a control.
+    pod-security.kubernetes.io/enforce: restricted
+    pod-security.kubernetes.io/enforce-version: latest
+    pod-security.kubernetes.io/audit: restricted
+    pod-security.kubernetes.io/warn: restricted

@@ -1,0 +1,50 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Arabic strings. The app declares android:supportsRtl="true" and Compose reads
+  the layout direction from the locale, so switching the device language mirrors
+  the whole UI without any per-screen work.
+-->
+<resources>
+    <string name="app_name">صن شوب</string>
+
+    <string name="nav_home">الرئيسية</string>
+    <string name="nav_search">البحث</string>
+    <string name="nav_cart">السلة</string>
+    <string name="nav_account">حسابي</string>
+
+    <string name="action_retry">حاول مرة أخرى</string>
+    <string name="action_add_to_cart">أضف إلى السلة</string>
+    <string name="action_checkout">إتمام الشراء</string>
+    <string name="action_sign_in">تسجيل الدخول</string>
+    <string name="action_sign_out">تسجيل الخروج</string>
+    <string name="action_continue_shopping">متابعة التسوق</string>
+
+    <string name="label_email">البريد الإلكتروني</string>
+    <string name="label_password">كلمة المرور</string>
+    <string name="label_quantity">الكمية</string>
+    <string name="label_subtotal">المجموع الفرعي</string>
+    <string name="label_total">الإجمالي</string>
+    <string name="label_out_of_stock">غير متوفر</string>
+    <string name="label_featured">منتجات مختارة</string>
+    <string name="label_new_arrivals">وصل حديثًا</string>
+    <string name="label_orders">طلباتي</string>
+    <string name="label_theme">المظهر</string>
+    <string name="label_language">اللغة</string>
+
+    <string name="empty_cart">سلتك فارغة</string>
+    <string name="empty_cart_hint">تصفّح المتجر وأضف ما يعجبك.</string>
+    <string name="empty_results">لا توجد نتائج مطابقة.</string>
+
+    <string name="error_network">تعذّر الوصول إلى صن شوب. تحقّق من اتصالك.</string>
+    <string name="error_generic">حدث خطأ ما. من فضلك حاول مرة أخرى.</string>
+
+    <!-- Arabic has six plural categories; Android resolves the right one. -->
+    <plurals name="item_count">
+        <item quantity="zero">لا توجد منتجات</item>
+        <item quantity="one">منتج واحد</item>
+        <item quantity="two">منتجان</item>
+        <item quantity="few">%d منتجات</item>
+        <item quantity="many">%d منتجًا</item>
+        <item quantity="other">%d منتج</item>
+    </plurals>
+</resources>

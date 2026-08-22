@@ -1,0 +1,26 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+namespace: sunshop
+
+resources:
+  - ../../base
+
+patches:
+  - target: { kind: Deployment, name: sunshop-api }
+    patch: |
+      - op: replace
+        path: /spec/replicas
+        value: 4
+  - target: { kind: Deployment, name: sunshop-web }
+    patch: |
+      - op: replace
+        path: /spec/replicas
+        value: 3
+
+configMapGenerator:
+  - name: sunshop-api-config
+    behavior: merge
+    literals:
+      - LOG_LEVEL=info
+      - SWAGGER_ENABLED=false

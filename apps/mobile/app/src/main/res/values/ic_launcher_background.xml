@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!--
+        The slate the app's light scheme uses for onBackground/onSurface. An
+        amber sun on amber would disappear; on slate the mark keeps its
+        contrast against both light and dark wallpapers.
+    -->
+    <color name="ic_launcher_background">#0F172A</color>
+</resources>
