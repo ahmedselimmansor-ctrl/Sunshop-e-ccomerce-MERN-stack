@@ -70,3 +70,8 @@ apps/mobile/captures/
 # Upload/release keys are usually .jks; committing one is unrecoverable.
 *.jks
 !apps/mobile/debug.keystore
+
+# playwright
+e2e-results/
+playwright-report/
+test-results/

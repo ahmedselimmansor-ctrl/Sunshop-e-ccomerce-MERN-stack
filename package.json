@@ -35,9 +35,12 @@
     "infra:logs": "docker compose -f docker-compose.yml logs -f",
     "infra:reset": "docker compose -f docker-compose.yml down -v",
     "stack:up": "docker compose -f docker-compose.yml --profile apps up -d --build",
-    "prepare": "husky || true"
+    "prepare": "husky || true",
+    "test:e2e": "playwright test",
+    "test:e2e:ui": "playwright test --ui"
   },
   "devDependencies": {
+    "@playwright/test": "^1.62.1",
     "@types/node": "^22.10.2",
     "@typescript-eslint/eslint-plugin": "^8.18.0",
     "@typescript-eslint/parser": "^8.18.0",
