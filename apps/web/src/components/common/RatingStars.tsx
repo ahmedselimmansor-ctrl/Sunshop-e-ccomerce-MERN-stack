@@ -24,18 +24,33 @@ export function RatingStars({ value, count, size = 'sm', className }: RatingStar
   return (
     <span className={cn('inline-flex items-center gap-1.5', className)}>
       <span className="relative inline-flex" aria-hidden>
-        <span className="text-muted-foreground/35 inline-flex">
+        {/*
+         * The empty stars are outlined, not filled grey.
+         *
+         * Two solid blobs cannot satisfy both contrast constraints at once. A
+         * grey light enough to stay clearly "empty" beside the amber fill
+         * disappeared into the background (it measured 2.0:1 in dark and 1.6:1
+         * in light, against the 3:1 that WCAG 1.4.11 asks of a UI component),
+         * and a grey dark enough to fix that dropped filled-versus-empty to
+         * 1.6:1, so the two states stopped being distinguishable instead.
+         *
+         * An outline separates the states by shape rather than by lightness,
+         * which leaves the colour free to carry contrast against the surface.
+         */}
+        <span className="text-muted-foreground inline-flex">
           {Array.from({ length: 5 }, (_, index) => (
-            <Star key={index} className={starSize} fill="currentColor" strokeWidth={0} />
+            <Star key={index} className={starSize} fill="none" strokeWidth={1.5} />
           ))}
         </span>
-        {/* Clipped overlay: width is the exact fraction, direction-safe. */}
+        {/* Clipped overlay: width is the exact fraction, direction-safe. The
+            amber stroke covers the outline beneath, so a filled star reads as
+            solid rather than rimmed. */}
         <span
           className="text-warning absolute inset-0 inline-flex overflow-hidden rtl:flex-row-reverse"
           style={{ width: `${percentage}%` }}
         >
           {Array.from({ length: 5 }, (_, index) => (
-            <Star key={index} className={starSize} fill="currentColor" strokeWidth={0} />
+            <Star key={index} className={starSize} fill="currentColor" strokeWidth={1.5} />
           ))}
         </span>
       </span>
