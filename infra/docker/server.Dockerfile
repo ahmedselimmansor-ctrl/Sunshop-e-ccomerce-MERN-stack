@@ -76,7 +76,7 @@ RUN --mount=type=cache,target=/root/.npm \
 
 # npm materialises a handful of packages from the workspace lockfile that
 # nothing in the server's dependency graph can reach. They are verified
-# orphans, not transitive dependencies, and they are all build tooling —
+# orphans, not transitive dependencies, and they are all build tooling.
 # `tsx` in particular hands a TypeScript runner to anyone who gets code
 # execution in this container.
 #

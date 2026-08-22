@@ -95,7 +95,7 @@ function PageFallback() {
  * means the next Tab continues from the old page's navigation, with nothing
  * announcing that the content changed.
  *
- * The first render is skipped deliberately — stealing focus on initial load
+ * The first render is skipped deliberately: stealing focus on initial load
  * would fight the browser's own restoration and jump past the skip link.
  */
 function ResetOnNavigate() {

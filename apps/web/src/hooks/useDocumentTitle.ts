@@ -6,7 +6,7 @@ import { useTranslation } from 'react-i18next';
  *
  * A single-page app never reloads the document, so without this every route
  * kept the title baked into index.html: fourteen pages all called "Sunshop".
- * That costs more than tidiness — tab switching, history, and bookmarks all
+ * That costs more than tidiness: tab switching, history, and bookmarks all
  * become guesswork, and a screen reader announces the same title on every
  * navigation, so nothing signals that the page changed.
  *

@@ -12,7 +12,7 @@ interface EmptyStateProps {
   /**
    * Heading level for the title. h2 suits the common case, where this sits
    * inside a page that already has a heading. Pages that return an empty state
-   * *instead of* their content — an empty cart, a product that 404s — render
+   * *instead of* their content (an empty cart, a product that 404s) render
    * no h1 at all otherwise, and this becomes the page heading.
    */
   titleAs?: 'h1' | 'h2';

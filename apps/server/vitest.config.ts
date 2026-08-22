@@ -18,7 +18,7 @@ export default defineConfig({
       thresholds: {
         // Per-file, not global. This suite is unit-only: it exercises the pure
         // domain logic in @sunshop/shared plus a couple of server helpers, and
-        // reaches roughly 2% of src/ — routes, models and jobs need a live
+        // reaches roughly 2% of src/: routes, models and jobs need a live
         // Mongo and Redis that this job does not start.
         //
         // A global floor of 40% was set here previously and could never pass,

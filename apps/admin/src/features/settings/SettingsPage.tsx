@@ -101,7 +101,7 @@ export function SettingsPage() {
               {t('settings.maintenanceHint')}
             </p>
             {/* This switch takes the storefront offline, and unlike the one
-                above it had no label at all — a screen reader announced it as
+                above it had no label at all: a screen reader announced it as
                 bare "switch". The name comes from the card title; the hint
                 beside it explains the consequence. */}
             <Switch

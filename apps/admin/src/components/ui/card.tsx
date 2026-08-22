@@ -23,8 +23,8 @@ CardHeader.displayName = 'CardHeader';
 interface CardTitleProps extends React.HTMLAttributes<HTMLHeadingElement> {
   /**
    * Heading level. Hardcoding h3 made every card-built page skip from the
-   * page h1 straight to h3, and left the sign-in page — which is nothing but
-   * a card — with no page heading at all. Default suits a card nested inside
+   * page h1 straight to h3, and left the sign-in page (which is nothing but
+   * a card) with no page heading at all. Default suits a card nested inside
    * an already-titled section.
    */
   as?: 'h1' | 'h2' | 'h3' | 'h4';

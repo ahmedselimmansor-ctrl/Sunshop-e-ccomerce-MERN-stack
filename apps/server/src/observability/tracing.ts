@@ -12,9 +12,9 @@
  * convenience wrappers pull in far more than this service uses:
  *
  *  - Instrumentations are listed explicitly. `getNodeAutoInstrumentations()`
- *    wires up 47 of them plus 5 cloud resource detectors — Kafka, Cassandra,
- *    GraphQL, Postgres, Koa, Hapi, Lambda, Alibaba, Azure, GCP — none of which
- *    this service loads. Adding a new backing store means adding its
+ *    wires up 47 of them plus 5 cloud resource detectors (Kafka, Cassandra,
+ *    GraphQL, Postgres, Koa, Hapi, Lambda, Alibaba, Azure, GCP), none of
+ *    which this service loads. Adding a new backing store means adding its
  *    instrumentation below, deliberately.
  *
  *  - `NodeTracerProvider`, not `NodeSDK`. We export traces over OTLP/HTTP and
@@ -77,7 +77,7 @@ export async function startTracing(): Promise<void> {
   registerInstrumentations({
     tracerProvider: provider,
     instrumentations: [
-      // Inbound requests, plus every outbound call that goes over node:http —
+      // Inbound requests, plus every outbound call that goes over node:http.
       // Stripe and Elasticsearch both ride on this.
       new HttpInstrumentation({
         ignoreIncomingRequestHook: (request) => {
@@ -87,7 +87,7 @@ export async function startTracing(): Promise<void> {
       }),
       // The HTTP hook above suppresses the *request* span for probe endpoints,
       // but express layer spans are created independently and would otherwise
-      // still arrive — as parentless roots, which is worse than noise. Kubernetes
+      // still arrive as parentless roots, which is worse than noise. Kubernetes
       // probes these every few seconds.
       new ExpressInstrumentation({
         ignoreLayers: [(name) => UNTRACED_PATHS.some((path) => name.includes(path))],

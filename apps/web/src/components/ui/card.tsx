@@ -23,7 +23,7 @@ CardHeader.displayName = 'CardHeader';
 interface CardTitleProps extends React.HTMLAttributes<HTMLHeadingElement> {
   /**
    * Heading level. A card's title is often the only heading a page has, and
-   * hardcoding h3 produced outlines that skipped straight from h1 to h3 — or,
+   * hardcoding h3 produced outlines that skipped straight from h1 to h3, or,
    * on pages built entirely from cards, gave no page heading at all. The
    * default suits a card nested inside a titled section; pass the level the
    * document actually needs.

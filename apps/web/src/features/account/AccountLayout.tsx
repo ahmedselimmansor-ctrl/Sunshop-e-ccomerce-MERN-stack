@@ -53,7 +53,7 @@ export function AccountLayout() {
 
         {/* min-w-0 is load-bearing: a grid item defaults to min-width:auto, so
             it refuses to shrink below its content. Any un-wrappable string in a
-            sub-page — a session's user-agent, a long order number — then pushed
+            sub-page (a session's user-agent, a long order number) then pushed
             this column past the viewport and scrolled the whole page sideways
             on mobile, however carefully the child truncated its own text. */}
         <div className="min-w-0">

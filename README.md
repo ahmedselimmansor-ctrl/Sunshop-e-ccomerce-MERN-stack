@@ -98,7 +98,7 @@ flowchart TB
 - **Stateless API.** Sessions live in Redis and refresh tokens in the database, so no pod holds anything worth preserving.
 - **Search is a projection, not the source of truth.** MongoDB owns product data; OpenSearch is rebuilt from it and may be dropped at any time.
 - **Secrets never sit in manifests.** The External Secrets Operator pulls from Secrets Manager into Kubernetes at runtime.
-- **Two proxy hops.** ALB then ingress, so Express is configured to trust exactly two — trusting all of them would let a client spoof `X-Forwarded-For` past rate limiting.
+- **Two proxy hops.** ALB then ingress, so Express is configured to trust exactly two. Trusting all of them would let a client spoof `X-Forwarded-For` past rate limiting.
 
 ---
 
@@ -172,7 +172,7 @@ flowchart TD
 
 ## Database design
 
-MongoDB, accessed through Mongoose. Money is stored everywhere as `{ amount: Int, currency: String }` in **minor units** — never a float.
+MongoDB, accessed through Mongoose. Money is stored everywhere as `{ amount: Int, currency: String }` in **minor units**, never a float.
 
 ```mermaid
 erDiagram
@@ -426,7 +426,7 @@ flowchart TD
     SEC --> CORS[CORS<br/>exact origins]
     CORS --> COOKIE[cookieParser]
     COOKIE --> HEALTH{/healthz /readyz?}
-    HEALTH -->|yes| PROBE([200 — bypasses everything below])
+    HEALTH -->|yes| PROBE([200, bypasses everything below])
     HEALTH -->|no| BODY[express.json<br/>256 KB limit]
     BODY --> CT[requireJsonContentType]
     CT --> SAN[sanitizeInput]
@@ -454,7 +454,7 @@ Errors leave through one handler that returns a stable machine-readable `code` p
 
 ## Checkout and the outbox
 
-Placing an order writes several documents and needs to trigger side effects — email, search reindex, analytics. Doing that work inline would mean an order that succeeded but whose confirmation email failed, or a transaction held open across a third-party call.
+Placing an order writes several documents and needs to trigger side effects: email, search reindex, analytics. Doing that work inline would mean an order that succeeded but whose confirmation email failed, or a transaction held open across a third-party call.
 
 Instead the side effects are written as events **inside the same transaction** as the order, then drained separately.
 
@@ -508,7 +508,7 @@ If the process dies mid-drain the event stays `pending` and is retried; if a han
 
 ## Authentication
 
-Short-lived access tokens in memory, long-lived refresh tokens in a rotating httpOnly cookie. The access token is deliberately **never** written to `localStorage` — that would trade XSS resistance for a one-line "stay signed in".
+Short-lived access tokens in memory, long-lived refresh tokens in a rotating httpOnly cookie. The access token is deliberately **never** written to `localStorage`, which would trade XSS resistance for a one-line "stay signed in".
 
 ```mermaid
 sequenceDiagram
@@ -531,7 +531,7 @@ sequenceDiagram
     API->>DB: store replacement
     API-->>APP: new access + new refresh
 
-    Note over API,DB: rotation — a stolen refresh token<br/>is single-use, and reuse of an<br/>already-spent token revokes the family
+    Note over API,DB: rotation. A stolen refresh token<br/>is single-use, and reuse of an<br/>already-spent token revokes the family
 ```
 
 Roles map to permissions in `packages/shared`, and routes declare the permission they need rather than the role, so adding a role does not mean auditing every route.
@@ -587,7 +587,7 @@ npm run dev
 
 Every host port is overridable in `.env` (`REDIS_HOST_PORT`, `MAIL_UI_HOST_PORT`, and so on) for machines where another project already holds the default.
 
-Seeded demo accounts — development only:
+Seeded demo accounts, development only:
 
 | Role              | Email                   | Password       |
 | ----------------- | ----------------------- | -------------- |

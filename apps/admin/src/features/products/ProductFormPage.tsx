@@ -824,7 +824,7 @@ function OptionEditor({
  *
  * The label used to render beside the control with nothing joining them: no
  * `htmlFor`, no `id`, no wrapping label element. Every input on this form was
- * therefore anonymous — a screen reader announced eleven consecutive "edit
+ * therefore anonymous: a screen reader announced eleven consecutive "edit
  * text" fields, and clicking a label focused nothing. Generating the id here
  * and handing it to both halves fixes that in one place rather than at ten
  * call sites.
@@ -844,8 +844,8 @@ function FieldWrapper({
   required?: boolean;
   /**
    * A single control, which is wired up automatically, or a function receiving
-   * the generated id. Fields that pair an input with a button — slug and tags
-   * — wrap both in a flex row, and cloning would put the id on that wrapper
+   * the generated id. Fields that pair an input with a button (slug and tags)
+   * wrap both in a flex row, and cloning would put the id on that wrapper
    * instead of the input, so those pass a function and place it themselves.
    */
   children: React.ReactNode | ((id: string) => React.ReactNode);
