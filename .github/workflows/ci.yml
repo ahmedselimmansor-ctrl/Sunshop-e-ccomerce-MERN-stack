@@ -199,7 +199,12 @@ jobs:
       - name: Start backing services
         run: |
           cp .env.example .env
-          docker compose up -d --wait
+          # The long-running services are named explicitly. `--wait` treats any
+          # container that is not running as a failure, and minio-init is a
+          # one-shot that creates the bucket and exits 0, so including it fails
+          # the step precisely when everything worked.
+          docker compose up -d --wait mongo redis elasticsearch minio mailhog
+          docker compose up minio-init
 
       - name: Build shared package
         run: npm run build -w @sunshop/shared
