@@ -1,4 +1,4 @@
-import { expect, test } from '@playwright/test';
+import { expect, test, type Page } from '@playwright/test';
 
 /**
  * The purchase journey, in a real browser.
@@ -9,10 +9,42 @@ import { expect, test } from '@playwright/test';
  * page to a placed order without a developer's help.
  */
 test.describe('purchase journey', () => {
-  test('a guest can add to the cart and it survives a reload', async ({ page }) => {
-    await page.goto('/products');
-    await page.locator('article a[href^="/products/"]').first().click();
+  /**
+   * Opens a product that can actually be bought.
+   *
+   * Taking whichever product the catalogue lists first is a coin flip: an
+   * out-of-stock one renders no add-to-cart button, and the catalogue's order
+   * depends on whether the search index happens to be warm. Asking the API for
+   * an in-stock slug makes the journey deterministic.
+   */
+  async function openBuyableProduct(page: Page): Promise<string> {
+    await page.goto('/');
+    // Repeated local runs can trip the rate limiter, which answers with an
+    // empty body; retrying briefly keeps that from reading as a product bug.
+    const result = await page.evaluate(async () => {
+      for (let attempt = 0; attempt < 5; attempt += 1) {
+        const response = await fetch('/api/v1/products?limit=24');
+        const text = await response.text();
+        if (response.ok && text) {
+          const body = JSON.parse(text) as { data?: { slug: string; inStock?: boolean }[] };
+          const items = body.data ?? [];
+          const buyable = items.find((product) => product.inStock !== false) ?? items[0];
+          if (buyable) return { slug: buyable.slug, status: response.status };
+        }
+        await new Promise((resolve) => setTimeout(resolve, 1500));
+      }
+      return { slug: null as string | null, status: 0 };
+    });
+    expect(result.slug, `no purchasable product (last status ${result.status})`).toBeTruthy();
+    const slug = result.slug!;
+
+    await page.goto(`/products/${slug}`);
     await page.waitForLoadState('networkidle');
+    await expect(page.getByRole('button', { name: /add to cart/i })).toBeEnabled();
+    return slug;
+  }
+  test('a guest can add to the cart and it survives a reload', async ({ page }) => {
+    await openBuyableProduct(page);
 
     await page.getByRole('button', { name: /add to cart/i }).click();
 
@@ -27,9 +59,7 @@ test.describe('purchase journey', () => {
   });
 
   test('the cart page lists what was added and totals it', async ({ page }) => {
-    await page.goto('/products');
-    await page.locator('article a[href^="/products/"]').first().click();
-    await page.waitForLoadState('networkidle');
+    await openBuyableProduct(page);
     const name = (await page.getByRole('heading', { level: 1 }).textContent())?.trim() ?? '';
 
     await page.getByRole('button', { name: /add to cart/i }).click();
@@ -48,9 +78,7 @@ test.describe('purchase journey', () => {
      * with a basket actually arrives at a working form rather than a redirect
      * or an empty-cart screen.
      */
-    await page.goto('/products');
-    await page.locator('article a[href^="/products/"]').first().click();
-    await page.waitForLoadState('networkidle');
+    await openBuyableProduct(page);
     await page.getByRole('button', { name: /add to cart/i }).click();
 
     await page.goto('/checkout');
