@@ -12,7 +12,6 @@ coverage
 .env
 .env.*
 !.env.example
-apps/mobile
 infra/terraform/.terraform
 **/*.tsbuildinfo
 docs

@@ -80,7 +80,7 @@ const options: LoggerOptions = {
       ...(context.route ? { route: context.route } : {}),
     };
   },
-  ...(isProduction || isTest
+  ...(isProduction || isTest || !process.stdout.isTTY
     ? {}
     : {
         transport: {

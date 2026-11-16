@@ -103,7 +103,6 @@ module.exports = {
     'build',
     'node_modules',
     'coverage',
-    'apps/mobile/**',
     'infra/**',
     '**/*.d.ts',
   ],

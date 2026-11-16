@@ -4,7 +4,6 @@ build
 coverage
 .terraform
 *.tfstate
-apps/mobile
 infra/k8s/**/*.gen.yaml
 package-lock.json
 CHANGELOG.md

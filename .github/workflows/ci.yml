@@ -134,49 +134,6 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
-  mobile:
-    name: Android build
-    runs-on: ubuntu-latest
-    timeout-minutes: 30
-    # This job used to be advisory (continue-on-error) and gated on a condition
-    # that never matched on push: `head_commit.modified` is an array of file
-    # paths, and `contains` compares whole elements, so 'apps/mobile' matched
-    # nothing. Between the two, the app went unbuilt long enough to accumulate
-    # missing launcher icons, four Kotlin compile errors and an R8 failure. It
-    # runs on every change and it gates now.
-
-    steps:
-      - uses: actions/checkout@v5
-
-      - uses: actions/setup-java@v5
-        with:
-          distribution: temurin
-          # Matches the JBR that Android Studio bundles, so CI and desktop
-          # builds agree.
-          java-version: "21"
-          cache: gradle
-
-      - name: Build and test
-        working-directory: apps/mobile
-        run: |
-          chmod +x ./gradlew
-          ./gradlew --no-daemon assembleDebug testDebugUnitTest
-
-      # R8 and resource shrinking only run for release, and they fail on
-      # problems a debug build never sees. Unsigned is fine: no keystore is
-      # needed to prove the shrinker is happy.
-      - name: Verify release build (R8)
-        working-directory: apps/mobile
-        run: ./gradlew --no-daemon assembleRelease
-
-      - name: Upload test results
-        if: always()
-        uses: actions/upload-artifact@v5
-        with:
-          name: android-test-results
-          path: apps/mobile/app/build/reports/tests/
-          retention-days: 7
-
   e2e:
     name: End-to-end (browser)
     runs-on: ubuntu-latest

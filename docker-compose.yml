@@ -109,7 +109,7 @@ services:
       start_period: 45s
 
   minio:
-    image: minio/minio:RELEASE.2024-12-18T13-15-44Z
+    image: cgr.dev/chainguard/minio:latest
     container_name: sunshop-minio
     restart: unless-stopped
     command: ["server", "/data", "--console-address", ":9001"]
@@ -122,7 +122,7 @@ services:
     volumes:
       - minio-data:/data
     healthcheck:
-      test: ["CMD", "mc", "ready", "local"]
+      test: ["CMD", "/usr/bin/mc", "ready", "local"]
       interval: 10s
       timeout: 5s
       retries: 10
@@ -130,7 +130,7 @@ services:
   # One-shot: creates the media bucket and makes it publicly readable, which is
   # what CloudFront + a bucket policy do in production.
   minio-init:
-    image: minio/mc:RELEASE.2024-11-21T17-21-54Z
+    image: cgr.dev/chainguard/minio:latest
     container_name: sunshop-minio-init
     depends_on:
       minio:

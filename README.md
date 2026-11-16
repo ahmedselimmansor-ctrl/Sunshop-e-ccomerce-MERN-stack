@@ -1,6 +1,6 @@
 # Sunshop
 
-A production-shaped e-commerce platform built as a TypeScript monorepo: a REST API, a bilingual storefront, a staff admin console, a native Android client, and the Terraform and Kubernetes needed to run it on AWS.
+A production-shaped e-commerce platform built as a TypeScript monorepo: a REST API, a bilingual storefront, a staff admin console, and the Terraform and Kubernetes needed to run it on AWS.
 
 Everything is bilingual English/Arabic with full RTL support, and prices are handled as integer minor units end to end.
 
@@ -9,7 +9,6 @@ Everything is bilingual English/Arabic with full RTL support, and prices are han
 | `apps/server`     | Express 4, Mongoose 8, Redis, Elasticsearch | REST API, background jobs, OpenAPI spec                   |
 | `apps/web`        | React 18, Vite, TanStack Query, Tailwind    | Customer storefront                                       |
 | `apps/admin`      | React 18, Vite, Recharts, Tailwind          | Staff console                                             |
-| `apps/mobile`     | Kotlin, Jetpack Compose, Hilt, Retrofit     | Native Android client                                     |
 | `packages/shared` | Zod, TypeScript                             | Schemas, domain rules and types shared by every workspace |
 | `infra`           | Terraform, Kustomize, Docker                | AWS infrastructure and deployment manifests               |
 
@@ -40,7 +39,6 @@ flowchart TB
     subgraph clients [Clients]
         WEB[Web storefront<br/>React SPA]
         ADM[Admin console<br/>React SPA]
-        AND[Android app<br/>Compose]
     end
 
     subgraph edge [Edge]
@@ -74,7 +72,6 @@ flowchart TB
 
     WEB --> CF
     ADM --> CF
-    AND --> CF
     CF --> WAF --> ALB --> API
     CF -.static assets.-> S3
 
@@ -153,7 +150,6 @@ flowchart TD
     APPS --> SRV["server<br/>Express API"]
     APPS --> WEB["web<br/>storefront"]
     APPS --> ADM["admin<br/>console"]
-    APPS --> MOB["mobile<br/>Android"]
 
     INF --> TF["terraform<br/>VPC, EKS, DocumentDB,<br/>OpenSearch, CloudFront, WAF"]
     INF --> K8S["k8s<br/>base + staging/production overlays"]
@@ -634,7 +630,7 @@ The nightly reindex is a safety net: the outbox keeps the index current, but a d
 
 ## Getting started
 
-**Requirements:** Node 22.12+, Docker, and (for the Android app) JDK 21 with the Android SDK.
+**Requirements:** Node 22.12+ and Docker.
 
 ```bash
 git clone git@github.com:ahmedselimmansor-ctrl/Sunshop-e-ccomerce-MERN-stack.git
@@ -666,15 +662,6 @@ Seeded demo accounts, development only:
 | Catalogue manager | `catalog@sunshop.demo`  | `Sunshop!2026` |
 | Customer          | `customer@sunshop.demo` | `Sunshop!2026` |
 
-### Android
-
-```bash
-cd apps/mobile
-./gradlew assembleDebug
-```
-
-The debug build points at `10.0.2.2:4000`, which is the host machine as seen from the Android emulator.
-
 ---
 
 ## Testing and CI
@@ -686,23 +673,19 @@ npm test              # vitest
 npm run build         # all workspaces
 ```
 
-Every push runs four jobs:
+Every push runs three jobs:
 
 ```mermaid
 flowchart LR
     P([push / PR]) --> B[Lint, typecheck, test<br/>+ coverage]
     P --> S[Dependency + secret scanning<br/>npm audit, Trivy, Gitleaks]
-    P --> M[Android build<br/>debug, unit tests, R8 release]
     P --> I[Infra validation<br/>terraform validate, kustomize build]
 
     B --> G{all green?}
     S --> G
-    M --> G
     I --> G
     G -->|main| D[Deploy<br/>build images → ECR → EKS]
 ```
-
-The Android job builds the release variant as well as debug, because R8 and resource shrinking fail on problems a debug build never sees.
 
 ---
 

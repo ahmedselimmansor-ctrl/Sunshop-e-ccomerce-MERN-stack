@@ -31,7 +31,6 @@ packages/shared     zod schemas, RBAC matrix, money helpers: imported by all thr
 apps/server         Express API
 apps/web            storefront
 apps/admin          dashboard
-apps/mobile         Kotlin/Compose Android app
 infra/              Docker, Kubernetes, Terraform
 ```
 
@@ -39,11 +38,6 @@ infra/              Docker, Kubernetes, Terraform
 validates a checkout form with `checkoutSchema`; the API validates the request with the
 _same_ `checkoutSchema`. Adding a required field is one edit, and every consumer fails
 to compile until it is handled.
-
-The Kotlin app mirrors these types by hand in `data/remote/Dto.kt`. That is a
-deliberate duplication: generating Kotlin from zod would add a codegen step to every
-build for a surface that changes rarely: and the DTOs are kept deliberately separate
-from the domain models so a wire change does not ripple into every screen.
 
 ---
 
